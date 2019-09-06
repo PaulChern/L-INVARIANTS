@@ -1,2 +1,2 @@
 # INVARIANT
-Phase field / Ladau model builder
+Phase field / Landau model builder
