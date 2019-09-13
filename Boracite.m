@@ -459,7 +459,7 @@ CompareOP[pdata_, min_, frame_, Dim_, range_] := Module[{},
   Print[Grid@{Flatten[Table[{PlotPvector[Dispatch[min[[n]]], Dim], PlotSurface[pdata[[n]]]}, {n, frame}]\[Transpose]]}];
 ]
 
-MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True}]] := Module[{vars, fEfield, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, t, x, y, z},
+MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True}]] := Module[{vars, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, n, t, x, y, z},
   {Lx, Ly, Lz} = Dim;
   vars = Variables@GF;
   init = SetInitial[vars, iconfig];
@@ -476,11 +476,11 @@ MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, Option
   fEfields =  Table[Sum[MeshMask[Etype, {Lx, Ly, Lz}, x, y, z] MeshMask["square", {Lx, Ly, Lz}, x, y, z] 
                         efield.{Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}, {x, Lx}, {y, Ly}, {z, Lz}], {efield, Efields}];
   Print["Applying electric field "];
-  Do[t = Timing[minEfield = FindMinimum[GF + fEfield, {vars, init}\[Transpose], MaxIterations -> Niter2];];
-     Print["Electric time step took " <> ToString[First@t] <> " seconds."];
+  Do[t = Timing[minEfield = FindMinimum[GF + fEfields[[n]], {vars, init}\[Transpose], MaxIterations -> Niter2];];
+     Print[ToString[n]<>": Electric time step took " <> ToString[First@t] <> " seconds."];
      If[OptionValue["TimeSeries"], init = #2 & @@@ (minEfield[[2]]), Unevaluated[Sequence[]]];
      AppendTo[minlist, minEfield[[2]]], 
-     {fEfield, fEfields}];
+     {n, Length@fEfields}];
 
   PlotData = Table[Association[Thread[{"X5", "P", "u"} -> Table[{{-1, 1}*Max[Abs[upx /. Dispatch[min]]], Transpose[#[[;; , ;; , Lz]]] /. Dispatch[min] & /@ upx}, {upx, {XTable, PTable, uTable}}]]], {min, minlist}];
   EmitSound@Play[Sin[300 t Sin[20 t]], {t, 0, 3}];
