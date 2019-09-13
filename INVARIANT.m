@@ -16,7 +16,8 @@
 BeginPackage["INVARIANT`",
 	        {"INVARIANT`ISODISTORT`",
 	         "INVARIANT`Structure`",
-	         "INVARIANT`Boracite`"}]
+	         "INVARIANT`Boracite`",
+             "INVARIANT`Builder`"}]
 
 Begin["`Private`"]
 

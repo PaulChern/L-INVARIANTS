@@ -6,16 +6,19 @@ GetX5mode          ::usage = "GetX5mode[DspMode]"
 GetStrain          ::usage = "GetStrain[parent, sub]"
 GenTraningSets     ::usage = "GenTraningSets[AllModes, num, PhaseName, type]"
 GenStrainSets      ::usage = "GenStrainSets[LatticeVector, type, num]"
-GoalFunction       ::usage = "GoalFunctionEnergy[func, ts, coe, volume]"
+GoalFunction       ::usage = "GoalFunctionEnergy[func, volume, trainingset, coeff]"
 GetElasticModuli   ::usage = "GetElasticModuli[file, volume]"
 ReadInvariant      ::usage = "ReadInvariant[invariants_, \[CapitalGamma]4_]"
 GetTensor          ::usage = "GetTensor[IvariantTerm]"
 LandauInvariant    ::usage = "LandauInvariant[]"
-
-(*--------- Plot and Manipulate Crystal Structures -------------------- ----------------*)
-
-(*--------- Point and Space Group Information ---------------------------*)
-
+MeshMask           ::usage = "MeshMask[i, Dim, x, y, z]"
+SetInitial         ::usage = "SetInitial[vars, iconfig]"
+Plotop             ::usage = "Plotop[Data, op]"
+PlotPvector        ::usage = "PlotPvector[min]"
+PlotSurface        ::usage = "PlotSurface[Data]"
+MinimizeBoracite   ::usage = "MinimizeBoracite[GF, iconfig, Niter1, Etype, Efield, Niter2, OptionsPattern[{NumTimeStep -> 0}]]"
+PathPlot           ::usage = "PathPlot[min, frame, y0, z0, param]"
+CompareOP          ::usage = "CompareOP[pdata, min, frame, range]"
 (*--------------------------------------------------*)
 (*-------------------------- Internal --------------*)
 (*--------------------------------------------------*)
@@ -41,12 +44,16 @@ InvariantString = Association[
 6   n4^4 n6^2 + n4^2 n9^4 + n5^4 n8^2 + n5^2 n7^4 + n6^4 n9^2 + n7^2 n8^4
 6   n4^4 n7^2 + n4^2 n7^4 + n5^4 n9^2 + n5^2 n9^4 + n6^4 n8^2 + n6^2 n8^4
 6   n4^4 n8^2 + n4^2 n8^4 + n5^4 n6^2 + n5^2 n6^4 + n7^4 n9^2 + n7^2 n9^4"];
+
+\[CapitalDelta]1; \[CapitalDelta]2; \[CapitalDelta]3;
+NumTsteps; ntstep;
 x; y; z;
 aa; AA; bb; BB; cc; CC;
 n1; n2; n3; n4; n5; n6; n7; n8; n9;
 Subscript[\[Epsilon], 1, 1]; Subscript[\[Epsilon], 2, 2]; Subscript[\[Epsilon], 3, 3]; 
 Subscript[\[Epsilon], 2, 3]; Subscript[\[Epsilon], 1, 3]; Subscript[\[Epsilon], 1, 2];
 Subscript[P, 1]; Subscript[P, 2]; Subscript[P, 3];
+Subscript[u, 1]; Subscript[u, 2]; Subscript[u, 3];
 Subscript[\[Alpha], xx]; 
 Subscript[\[Alpha], xxxx]; Subscript[\[Alpha], xxXX]; Subscript[\[Alpha], xxyy]; Subscript[\[Alpha], xxYY]; 
 Subscript[\[Alpha], xxxxxx]; Subscript[\[Alpha], xxxxXX]; Subscript[\[Alpha], xxxxyy]; Subscript[\[Alpha], xxxxYY]; Subscript[\[Alpha], XXXXyy];
@@ -55,16 +62,17 @@ Subscript[\[Beta], 1111]; Subscript[\[Beta], 1122];
 Subscript[\[Beta], 111111]; Subscript[\[Beta], 111122]; Subscript[\[Beta], 112233];
 Subscript[C, 1111]; Subscript[C, 1122]; Subscript[C, 1212];
 Subscript[Q, 1111]; Subscript[Q, 1122]; Subscript[Q, 1212];
-Subscript[G, 1111]; Subscript[G, 1122]; Subscript[G, 1212];
+Subscript[Gx, 1111]; Subscript[Gx, 1122]; Subscript[Gx, 1212];
+Subscript[Gp, 1111]; Subscript[Gp, 1122]; Subscript[Gp, 1212];
 Subscript[\[Gamma], x5];
 Subscript[\[Gamma], p];
 Subscript[\[Gamma], c];
 Subscript[\[Gamma], pc];
 Subscript[\[Gamma], xc];
 Subscript[\[Gamma], xp];
-Subscript[\[Eta], xxpp];
+Subscript[\[Eta], c1c2p3]; Subscript[\[Eta], a2b1p3]; Subscript[\[Eta], a1b2p3];
+
 (*--------------------------- Options ----------------------------*)
-(*Options[ImportIsodistortCIF]    = {Fractional->False, CorrectLabels->True, Tolerance->10^-6}*)
 
 (*--------------------------- external Modules -------------------*)
 
@@ -146,6 +154,7 @@ GenTraningSets[AllModes_, num_, PhaseName_, type_] := Module[{i, str, N, ModesNu
 
 GenStrainSets[LatticeVector_, PhaseName_, type_, num_] := Module[{i, N, R, DirName, StrainTable},
   DirName = type <> "-" <> PhaseName;
+  Print[DirName<>" Generated."];
   N = Quotient[num, 2];
   R = Normal[Symmetrize[LatticeVector]];
   Which[
@@ -158,12 +167,14 @@ GenStrainSets[LatticeVector_, PhaseName_, type_, num_] := Module[{i, N, R, DirNa
    type == "Q1212",
    StrainTable = Table[{{1.0, i/1000, 0}, {i/1000, 1.0, 0}, {0, 0, 1.0}}.R, {i, -N, N}],
    type == "gammaxc",
-   StrainTable = Table[{{1.0, i/1000, 0}, {i/1000, 1.0, 0}, {0, 0, 1.0}}.R, {i, -N, N}]
-  ];
+   StrainTable = Table[{{1.0, i/1000, 0}, {i/1000, 1.0, 0}, {0, 0, 1.0}}.R, {i, -N, N}],
+   type == "gammac",
+   StrainTable = Table[{{1.0, 2 i/10000, 2 i/10000}, {2 i/10000, 1.0, 2 i/10000}, {2 i/10000, 2 i/10000, 1.0}}.R, {i, -N, N}]
+   ];
   Return[{StrainTable, DirName}]
 ]
 
-GoalFunction[func_, ts_, coe_, volume_] := Module[{},
+GoalFunction[func_, volume_, ts_, coe_] := Module[{},
   Total[((func /. coe /. Thread[{aa, AA, bb, BB, CC, cc, Subscript[P, 1], Subscript[P, 2], Subscript[P, 3], Subscript[\[Epsilon], 1, 1], Subscript[\[Epsilon], 2, 2], Subscript[\[Epsilon], 3, 3], Subscript[\[Epsilon], 1, 2], Subscript[\[Epsilon], 2, 3], Subscript[\[Epsilon], 1, 3]} -> #[[3]]]) - #[[2]]/volume)^2 & /@ ts]
 ]
 
@@ -200,7 +211,7 @@ GetTensor[IvariantTerm_] := Module[{CoeffRules, X5, tensor, sa, XX},
   Return[tensor]
 ]
 
-LandauInvariant[] := Module[{Boracite, R, r, i, j, k, l, m, n, ndim, Pk, Pl, Pi2, Pj2, Pk2, Pij, Pkl, Pmn, \[Epsilon]ij, \[Epsilon]kl, \[Epsilon]mn, epsilon, X, X5, X5k, X5l, X5i2, X5j2, X5k2, X5ij, X5kl, X5mn, \[CapitalGamma]4P, \[CapitalGamma]4\[Epsilon], \[Alpha]i2, TensorX5, TensorX56th, \[Alpha]i2\[Alpha]j2, \[Alpha]i2\[Alpha]j2\[Alpha]k2, \[Beta]i2, \[Beta]iijj, \[Beta]iijjkk, Cijkl, Cijmn, Cklmn, Qmnkl, qijkl, Gijkl, EX5termsX5\[CapitalGamma]4P, fx5, fx56, fg, fp, fc, fpc, fxc, fxp},
+LandauInvariant[type_, OptionsPattern[{"MeshType"->"square"}]] := Module[{Boracite, R, r, i, j, k, l, m, n, ndim, Pk, Pl, Pi2, Pj2, Pk2, Pij, Pkl, Pmn, \[Epsilon]ij, \[Epsilon]kl, \[Epsilon]mn, epsilon, X, X5, X5k, X5l, X5i2, X5j2, X5k2, X5ij, X5kl, X5mn, \[CapitalGamma]4P, \[CapitalGamma]4\[Epsilon], \[Alpha]i2, TensorX5, TensorX56th, \[Alpha]i2\[Alpha]j2, \[Alpha]i2\[Alpha]j2\[Alpha]k2, \[Beta]i2, \[Beta]iijj, \[Beta]iijjkk, Cijkl, Cijmn, Cklmn, Qmnkl, qijkl, Gijkl, EX5termsX5\[CapitalGamma]4P, fx5, fx56, fg, fp, fc, fpc, fxc, fxp, \[Epsilon]2u, PDisc, X5Disc, zbc, xbc, fDisc0, fEfield},
 
 (**********************************************-----Variables-----************************************************)
   R = {x, y, z};
@@ -224,7 +235,7 @@ LandauInvariant[] := Module[{Boracite, R, r, i, j, k, l, m, n, ndim, Pk, Pl, Pi2
 (**********************************************-----Tensors-----************************************************)
   TensorX5 = GetTensor[ReadInvariant[InvariantString["4thX"], "Polarizations"]];
   TensorX56th = GetTensor[ReadInvariant[InvariantString["6thX"], "Polarizations"]];
-  EX5termsX5\[CapitalGamma]4P = ReadInvariant[InvariantString["6thX"], "Polarizations"];
+  EX5termsX5\[CapitalGamma]4P = ReadInvariant[InvariantString["4th\[CapitalGamma]4X"], "Polarizations"];
   \[Alpha]i2 = SparseArray[{{i_} -> Subscript[\[Alpha], xx]}, {6}];
   \[Alpha]i2\[Alpha]j2 = Total[Normal[#1*#2] & @@ {TensorX5, {2 Subscript[\[Alpha], xxxx], 0, 2 Subscript[\[Alpha], xxXX], 2 Subscript[\[Alpha], xxyy], 2 Subscript[\[Alpha], xxYY]}}];
   \[Alpha]i2\[Alpha]j2\[Alpha]k2 = Total[Normal[#1*#2] & @@ {TensorX56th, {Subscript[\[Alpha], xxxxxx], Subscript[\[Alpha], xxxxXX], Subscript[\[Alpha], xxxxyy], Subscript[\[Alpha], xxxxYY], Subscript[\[Alpha], XXXXyy]}}];
@@ -242,30 +253,240 @@ LandauInvariant[] := Module[{Boracite, R, r, i, j, k, l, m, n, ndim, Pk, Pl, Pi2
                        {m_, m_, n_, n_} /; m != n -> Subscript[Q, 1122], 
                        {m_, n_, m_, n_} /; m != n -> Subscript[Q, 1212]}, {3, 3, 3, 3}];
   qijkl = TensorContract[2 Cijmn\[TensorProduct]Qmnkl, {{3, 5}, {4, 6}}];
-  Gijkl = SparseArray[{{i_, i_, i_, i_} -> Subscript[G, 1111], 
-                       {i_, i_, j_, j_} /; i != j -> Subscript[G, 1122], 
-                       {i_, j_, i_, j_} /; i != j -> Subscript[G, 1212]}, {6, 3,6, 3}];
+  Gxijkl = SparseArray[{{i_, i_, i_, i_} -> Subscript[Gx, 1111], 
+                       {i_, i_, j_, j_} /; i != j -> Subscript[Gx, 1122], 
+                       {i_, j_, i_, j_} /; i != j -> Subscript[Gx, 1212]}, {6, 3,6, 3}];
+  Gpijkl = SparseArray[{{i_, i_, i_, i_} -> Subscript[Gp, 1111],
+                       {i_, i_, j_, j_} /; i != j -> Subscript[Gp, 1122],
+                       {i_, j_, i_, j_} /; i != j -> Subscript[Gp, 1212]}, {6, 3,6, 3}];
 
-(**********************************************-----Energy-----************************************************)
-    fx5 = TensorContract[\[Alpha]i2\[TensorProduct]X5i2, {1, 2}] 
+(**********************************************-----EnergyOnSite-----************************************************)
+  fx5 = TensorContract[\[Alpha]i2\[TensorProduct]X5i2, {1, 2}] 
         + TensorContract[1/2 \[Alpha]i2\[Alpha]j2\[TensorProduct]X5i2\[TensorProduct]X5j2,{{1, 3}, {2, 4}}] 
         + 0 TensorContract[\[Alpha]i2\[Alpha]j2\[Alpha]k2\[TensorProduct]X5i2\[TensorProduct]X5j2\[TensorProduct]X5k2, {{1, 4}, {2, 5}, {3, 6}}] 
         + Subscript[\[Gamma], x5] (aa[x, y, z] bb[x, y, z] cc[x, y, z] - AA[x, y, z] BB[x, y, z] CC[x, y, z]); 
-  fg = TensorContract[1/2 X5ij\[TensorProduct]Gijkl\[TensorProduct]X5kl, {{1, 3}, {2, 4}, {5, 7}, {6, 8}}];
+  fg = TensorContract[1/2 X5ij\[TensorProduct]Gxijkl\[TensorProduct]X5kl, {{1, 3}, {2, 4}, {5, 7}, {6, 8}}]
+     + TensorContract[1/2 Pij\[TensorProduct]Gpijkl\[TensorProduct]Pkl, {{1, 3}, {2, 4}, {5, 7}, {6, 8}}];
   fp = TensorContract[1/2 \[Beta]i2\[TensorProduct]Pi2, {{1, 2}}] 
      + TensorContract[1/2 \[Beta]iijj\[TensorProduct]Pi2\[TensorProduct]Pj2, {{1, 3}, {2, 4}}] 
      + 0 TensorContract[1/2 \[Beta]iijjkk\[TensorProduct]Pi2\[TensorProduct]Pj2\[TensorProduct]Pk2, {{1, 4}, {2, 5}, {3, 6}}] 
      + Subscript[\[Gamma], p] Subscript[P, 1][x, y, z] Subscript[P, 2][x, y, z] Subscript[P, 3][x, y, z];
   fx56 = Subscript[\[Alpha], xxxxXX] (aa[x, y, z]^2 AA[x, y, z]^2 (aa[x, y, z]^2 + AA[x, y, z]^2) + bb[x, y, z]^2 BB[x, y, z]^2 (bb[x, y, z]^2 + BB[x, y, z]^2) + CC[x, y, z]^2 cc[x, y, z]^2 (CC[x, y, z]^2 + cc[x, y, z]^2)) + Subscript[\[Alpha], xxxxxx] ((aa[x, y, z]^2 + AA[x, y, z]^2)^3 + (bb[x, y, z]^2 + BB[x, y, z]^2)^3 + (CC[x, y, z]^2 + cc[x, y, z]^2)^3);
   fc = TensorContract[1/2 \[Epsilon]ij\[TensorProduct]Cijkl\[TensorProduct]\[Epsilon]kl, {{1, 3}, {2, 4}, {5, 7}, {6, 8}}] 
-     + Subscript[\[Gamma], c] Subscript[\[Epsilon], 1, 2][x, y, z] Subscript[\[Epsilon], 2, 3][x, y, z] Subscript[\[Epsilon], 1, 3][x, y, z];
+     + 0 Subscript[\[Gamma], c] Subscript[\[Epsilon], 1, 2][x, y, z] Subscript[\[Epsilon], 2, 3][x, y, z] Subscript[\[Epsilon], 1, 3][x, y, z];
   fpc = TensorContract[-(1/2) \[Epsilon]ij\[TensorProduct]qijkl\[TensorProduct]Pk\[TensorProduct]Pl, {{1, 3}, {2, 4}, {5, 7}, {6, 8}}] + Subscript[\[Gamma], pc] {Subscript[\[Epsilon], 2, 3][x, y, z], Subscript[\[Epsilon], 1, 3][x, y, z], Subscript[\[Epsilon], 1, 2][x, y, z]}.{Subscript[P, 1][x, y, z], Subscript[P, 2][x, y, z], Subscript[P, 3][x, y, z]};
   fxc = Subscript[\[Gamma], xc] (Subscript[\[Epsilon], 2, 3][x, y, z] bb BB + Subscript[\[Epsilon], 1, 3][x, y, z] aa AA + Subscript[\[Epsilon], 1, 2][x, y, z] cc CC) /. Thread[X5 -> X];
   fxp = (Subscript[\[Gamma], xp] (Subscript[P, 1][x, y, z] bb BB + Subscript[P, 2][x, y, z] aa AA + Subscript[P, 3][x, y, z] cc CC) /. Thread[X5 -> X]) 
-      + EX5termsX5\[CapitalGamma]4P.{Subscript[\[Eta], xxpp], 0, 0, 0, 0};
+      + EX5termsX5\[CapitalGamma]4P.{Subscript[\[Eta], c1c2p3], Subscript[\[Eta], a2b1p3], Subscript[\[Eta], a1b2p3], 0, 0};
   Boracite = fx5 + fp + fc + fpc + fxc + fxp;
-  Return[Boracite]
+(**********************************************-----Discretization-----************************************************)
+  \[Epsilon]2u = Dispatch[epsilon /. Subscript[\[Epsilon], i_, j_][x_, y_, z_] -> 
+                                     Subscript[\[Epsilon], i, j, x, y, z] 
+                                  /. Derivative[dx_, dy_, dz_][Subscript[u, i_]][x_, y_, z_] -> 
+                                     (Subscript[u, i, x + dx, y + dy, z + dz] - Subscript[u, i, x, y, z])/(\[CapitalDelta]1 dx + \[CapitalDelta]2 dy + \[CapitalDelta]3 dz)
+                                  /. Subscript[\[Epsilon], i_, j_, __] -> 
+                                     Subscript[\[Epsilon], i, j, x_, y_, z_]];
+  \[Epsilon]Disc = Dispatch[{Subscript[\[Epsilon], i_, j_][x_, y_, z_] -> Subscript[\[Epsilon], i, j, x, y, z]}];
+  PDisc = Dispatch[{Subscript[P, i_][x_, y_, z_] -> 
+                    Subscript[P, i, x, y, z], 
+                    Derivative[dx_, dy_, dz_][Subscript[P, i_]][x_, y_, z_] -> 
+                    (Subscript[P, i, x + dx, y + dy, z + dz] - Subscript[P, i, x, y, z])/(\[CapitalDelta]1 dx + \[CapitalDelta]2 dy + \[CapitalDelta]3 dz)}];
+  X5Disc = Dispatch[Flatten@{Thread[X -> (Subscript[#, x, y, z] & /@ X5)], 
+                    Thread[Derivative[dx_, dy_, dz_][#][x_, y_, z_] -> 
+                           (Subscript[#, x + dx, y + dy, z + dz] - Subscript[#, x, y, z])/(\[CapitalDelta]1 dx + \[CapitalDelta]2 dy + \[CapitalDelta]3 dz)] & /@ X5}];
+  zbc = Dispatch[{Subscript[u, 3, x_, y_, Lz + 1] :> Subscript[u, 3, x, y, 1]}];
+  xbc = Dispatch[{Subscript[u, 3, Lx + 1, y_, z_] :> Subscript[u, 3, 1, y, z]}];
+
+  fDisc0 = Boracite + fg /. \[Epsilon]Disc /. PDisc /. X5Disc /. \[Epsilon]2u;
+
+  Which[type=="OnSite", Return[Boracite], type=="Ginzburg", Return[Boracite + fg], type=="Discretized", Return[fDisc0]]
 ]
+
+MeshMask[i_, Dim_, x_, y_, z_] := Module[{s, Lx, Ly, Lz},
+  {Lx, Ly, Lz} = Dim;
+  s = Switch[i,
+      "square",          If[0 < x <= Lx && 0 < y <= Ly && 0 < z <= Lz, 1, 0],
+      "circle",          If[(x - Lx/2)^2 + (y - Ly/2)^2 < (Min[Lx, Ly]/2)^2, 1, 0],
+      "TiltedRec",       If[x - Ly/4 <= y <= x + Ly/4 && -y + 7 Ly/4 >= x >= -y + Ly/4, 1, 0],
+      "TiltedRecUp",     If[x - Ly/4 <= y <= x + Ly/4 && -y + 7 Ly/4 >= x >= -y + Ly/4, 1, 0],
+      "TiltedRecDn",     If[x - Ly/4 <= y <= x + Ly/4 && -y + 7 Ly/4 >= x >= -y + Ly/4, 1, 0],
+      "TiltedRecCenter", If[x - Ly/4 <= y <= x + Ly/4 && -y + 5 Ly/4 >= x >= -y + 3 Ly/4, 1,0],
+      "Ehh",             If[x >= -y + 3 Ly/2 && x - Ly/8 <= y <= x + Ly/8, 1, 0],
+      "Ett",             If[x <= -y + Ly/2 && x - Ly/8 <= y <= x + Ly/8, 1, 0],
+      "Enarrow1",        If[x - Ly/8 <= y <= x + Ly/8, 1, 0],
+      "Enarrow2",        If[-x - Ly/8 <= y <= -x + Ly/8, 1, 0],
+      "EnarrowVertical", If[Lx/4 <= x <= Lx 3/4, 1, 0]];
+  Return[s]
+]
+
+SetInitial[vars_, iconfig_] := Module[{init, v, op, x, y, z},
+   RandomSeed[12356];
+   Which[
+    iconfig === "random",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2}; 
+                 Which[op === cc || op === CC || op === u || op === P, 0, True, RandomReal[{-1, 1}]], {v, vars}],
+    iconfig === "1",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && (y - x) (y + x) < 0, 1,
+                       op === AA && (y - x) (y + x) < 0 && x > 0, 1,
+                       op === AA && (y - x) (y + x) < 0 && x < 0, -1,
+                       op === bb && (y - x) (y + x) > 0, 1,
+                       op === BB && (y - x) (y + x) > 0 && y < 0, 1,
+                       op === BB && (y - x) (y + x) > 0 && y > 0, -1, True, 0], {v, vars}],
+    iconfig === "2",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && (y - x) (y + x) > 0, 1,
+                       op === AA && (y - x) (y + x) > 0 && y < 0, 1,
+                       op === AA && (y - x) (y + x) > 0 && y > 0, 1,
+                       op === bb && (y - x) (y + x) < 0, 1,
+                       op === BB && (y - x) (y + x) < 0 && x < 0, -1,
+                       op === BB && (y - x) (y + x) < 0 && x > 0, 1, True, 0], {v, vars}],
+    iconfig === "3",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && (y - x) (y + x) < 0, 1,
+                       op === AA && (y - x) (y + x) < 0 && x < 0, 1,
+                       op === AA && (y - x) (y + x) < 0 && x > 0, 1,
+                       op === bb && (y - x) (y + x) > 0, 1,
+                       op === BB && (y - x) (y + x) > 0 && y < 0, -1,
+                       op === BB && (y - x) (y + x) > 0 && y > 0, 1, True, 0], {v, vars}],
+    iconfig === "4",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && x > 0, 1, op === AA && x > 0 && y - x < 0, 1,
+                       op === AA && x > 0 && y - x > 0, -1, op === bb && x < 0, 1,
+                       op === BB && x < 0 && y + x > 0, 1,
+                       op === BB && x < 0 && y + x < 0, -1, True, 0], {v, vars}],
+    iconfig === "5",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && y + x > 0, 1,
+                       op === AA && y + x > 0 && x < 0, 1,
+                       op === AA && y + x > 0 && x > 0, -1, op === bb && y + x < 0, 1,
+                       op === BB && y + x < 0 && y > 0, 1,
+                       op === BB && y + x < 0 && y < 0, -1, True, 0], {v, vars}],
+    iconfig === "6",
+    init = Table[{op = v[[1]], x = v[[2]] - Lx/2, y = v[[3]] - Ly/2, z = v[[4]] - Lz/2};
+                 Which[op === aa && y - x > 0, 1,
+                       op === AA && y - x > 0 && x < 0, -1,
+                       op === AA && y - x > 0 && x > 0, 1, op === bb && y - x < 0, 1,
+                       op === BB && y - x < 0 && y < 0, -1,
+                       op === BB && y - x < 0 && y > 0, 1, True, 0], {v, vars}]
+    ];
+   Return[init]
+]
+
+Plotop[Dict_, op_, OptionsPattern[{"RangeType" -> "whole", "FrameNum" -> 1}]] := Module[{pl, range, disrange, iop, Data, TablePlot},
+  Data = Dict[op][[2]];
+  disrange = Which[OptionValue["RangeType"] == "whole", ConstantArray[Dict[op][[1]], Length@Data], OptionValue["RangeType"] == "separated", MinMax[#] & /@ Data];
+  (*Print[disrange];*)
+  Table[
+   ListDensityPlot[Data[[iop]],
+                   ColorFunctionScaling -> False,
+                   ColorFunction -> (ColorData["Rainbow"][Rescale[#, disrange[[iop]]]] &), 
+                   PlotLegends -> Placed[BarLegend[{(ColorData["Rainbow"][Rescale[#, range]] &) /. range -> disrange[[iop]], disrange[[iop]]}, 
+                                         LabelStyle -> {Black, Bold, 10}, LegendLayout -> "Column", 
+                                         LegendMargins -> 0, 
+                                         LegendLabel -> Placed[Style[ToString[Subscript[op, iop]] <> "@" <> ToString[OptionValue["FrameNum"] - 1], 20], Top]], Right],
+                   PlotRange -> disrange[[iop]],
+                   InterpolationOrder -> 1,
+                   ClippingStyle -> {Blue, Red},
+                   AspectRatio -> Ly/Lx,
+                   ImageSize -> Small
+                   ], 
+   {iop, Length@Data}]
+]
+
+PlotPvector[min_, Dim_, OptionsPattern[{"FrameNum" -> 1, "meshtype"->"square"}]] := Module[{lla, x, y, z},
+  Show[Graphics3D[
+                  Join[
+                   Transpose[Table[lla = 1 MeshMask[OptionValue["meshtype"], Dim, x, y, z]; 
+                                   {Hue[Sign[lla Subscript[P, 3, x, y, z]]/4 + 0.5], 
+                                    Arrowheads[0.02], 
+                                    Arrow[Tube[{{x, y, z} - lla {Subscript[P, 1, x, y, z], 
+                                                Subscript[P, 2, x, y, z], 
+                                                Subscript[P, 3, x, y, z]}, 
+                                               {x, y, z} + lla {Subscript[P, 1, x, y, z], 
+                                               Subscript[P, 2, x, y, z], 
+                                               Subscript[P, 3, x, y, z]}}]]}, 
+                                   {x, 1, Lx, 1}, {y, 1, Ly, 1}, {z, 1, Lz}]] /. min, 
+                   {Black, Thick, Dashed, Line[{{1, Ly, 1}, {Lx, 1, 1}}], Line[{{1, 1, 1}, {Lx, Ly, 1}}]}], 
+                  ViewPoint -> {0, 0, 10}, 
+                  ImageSize -> Large, 
+                  PlotLabel -> "@" <> ToString[OptionValue["FrameNum"] - 1]], 
+                  FrameTicks -> True]
+]
+
+
+PlotSurface[Data_] := Module[{},
+  Show[ListPlot3D[Data["u"][[2]][[3]], 
+       ColorFunction -> "Rainbow",
+       PlotLegends -> Automatic, 
+       PlotRange -> Automatic,
+       AspectRatio -> Automatic, 
+       ImageSize -> Small,
+       ViewPoint -> {100, -100, 0}]]
+]
+
+PathPlot[min_, frame_, y0_, z0_, param_] := Module[{},
+  Grid[{Table[ListPlot[Chop[{Table[Subscript[P, i, x, y0, z0], {x, 1, Lx}] /. Dispatch[min[[frame[[1]]]]], 
+                             Table[Subscript[P, i, x, y0, z0], {x, 1, Lx}] /. Dispatch[min[[frame[[2]]]]]}, 10^-6], 
+                       PlotRange -> All, 
+                       ImageSize -> Medium, 
+                       Joined -> True, 
+                       InterpolationOrder -> 1, 
+                       PlotMarkers -> Automatic, 
+                       PlotLabel -> Subscript[P, i], 
+                       PlotLegends -> {ToString[frame[[1]]], ToString[frame[[2]]]}, 
+                       Frame -> True], 
+                {i, Range[3]}], 
+        Table[ListPlot[Chop[
+            {Table[(Subscript[u, i, x + 1, y0, z0] - Subscript[u, i, x, y0, z0])/Subscript[\[CapitalDelta], 1] /. param, {x, 1, Lx}] /. Dispatch[min[[frame[[1]]]]], 
+             Table[(Subscript[u, i, x + 1, y0, z0] - Subscript[u, i, x, y0, z0])/Subscript[\[CapitalDelta], 1] /. param, {x, 1, Lx}] /. Dispatch[min[[frame[[2]]]]]}, 
+                            10^-4], 
+                       PlotRange -> All, 
+                       ImageSize -> Medium, 
+                       Joined -> True, 
+                       InterpolationOrder -> 1, 
+                       PlotMarkers -> Automatic, 
+                       PlotLabel -> Subscript[\[Epsilon], i, 1], 
+                       PlotLegends -> {ToString[frame[[1]]], ToString[frame[[2]]]}, 
+                       Frame -> True], 
+                {i, Range[3]}]
+        }
+    ]
+]
+
+CompareOP[pdata_, min_, frame_, Dim_, range_] := Module[{},
+  Print[Grid@Flatten[(Partition[#, 6] & /@ Table[Flatten[Plotop[pdata[[n]], #, "RangeType" -> range] & /@ {"X5", "P", "u"}], {n, frame}])\[Transpose], 1]];
+  Print[Grid@{Flatten[Table[{PlotPvector[Dispatch[min[[n]]], Dim], PlotSurface[pdata[[n]]]}, {n, frame}]\[Transpose]]}];
+]
+
+MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True}]] := Module[{vars, fEfield, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, t, x, y, z},
+  {Lx, Ly, Lz} = Dim;
+  vars = Variables@GF;
+  init = SetInitial[vars, iconfig];
+  XTable = Table[op, {op, {Subscript[aa, x, y, z], Subscript[AA, x, y, z], Subscript[bb, x, y, z], Subscript[BB, x, y, z], Subscript[CC, x, y, z], Subscript[cc, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+  PTable = Table[op, {op, {Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+  uTable = Table[op, {op, {Subscript[u, 1, x, y, z], Subscript[u, 2, x, y, z], Subscript[u, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+
+  Print["Minimizing without electric field."];
+  t = Timing[min = FindMinimum[GF, {vars, init}\[Transpose], MaxIterations -> Niter1];];
+  Print["Initializing minimization took " <> ToString[First@t] <> " seconds."];
+  init = #2 & @@@ (min[[2]]);
+  AppendTo[minlist, min[[2]]];
+
+  fEfields =  Table[Sum[MeshMask[Etype, {Lx, Ly, Lz}, x, y, z] MeshMask["square", {Lx, Ly, Lz}, x, y, z] 
+                        efield.{Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}, {x, Lx}, {y, Ly}, {z, Lz}], {efield, Efields}];
+  Print["Applying electric field "];
+  Do[t = Timing[minEfield = FindMinimum[GF + fEfield, {vars, init}\[Transpose], MaxIterations -> Niter2];];
+     Print["Electric time step took " <> ToString[First@t] <> " seconds."];
+     If[OptionValue["TimeSeries"], init = #2 & @@@ (minEfield[[2]]), Unevaluated[Sequence[]]];
+     AppendTo[minlist, minEfield[[2]]], 
+     {fEfield, fEfields}];
+
+  PlotData = Table[Association[Thread[{"X5", "P", "u"} -> Table[{{-1, 1}*Max[Abs[upx /. Dispatch[min]]], Transpose[#[[;; , ;; , Lz]]] /. Dispatch[min] & /@ upx}, {upx, {XTable, PTable, uTable}}]]], {min, minlist}];
+  EmitSound@Play[Sin[300 t Sin[20 t]], {t, 0, 3}];
+  Return[{PlotData, minlist}]
+]
+
 (*-------------------------- Attributes ------------------------------*)
 
 (*Attributes[]={Protected, ReadProtected}*)
