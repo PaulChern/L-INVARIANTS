@@ -19,6 +19,7 @@ PlotSurface        ::usage = "PlotSurface[Data]"
 MinimizeBoracite   ::usage = "MinimizeBoracite[GF, iconfig, Niter1, Etype, Efield, Niter2, OptionsPattern[{NumTimeStep -> 0}]]"
 PathPlot           ::usage = "PathPlot[min, frame, y0, z0, param]"
 CompareOP          ::usage = "CompareOP[pdata, min, frame, range]"
+GetOpTables        ::usage = "GetOpTables[minlist, Dim]"
 (*--------------------------------------------------*)
 (*-------------------------- Internal --------------*)
 (*--------------------------------------------------*)
@@ -373,7 +374,8 @@ SetInitial[vars_, iconfig_] := Module[{init, v, op, x, y, z},
    Return[init]
 ]
 
-Plotop[Dict_, op_, OptionsPattern[{"RangeType" -> "whole", "FrameNum" -> 1}]] := Module[{pl, range, disrange, iop, Data, TablePlot},
+Plotop[Dict_, op_, Dim_, OptionsPattern[{"RangeType" -> "whole", "FrameNum" -> 1}]] := Module[{pl, range, disrange, iop, Data, TablePlot},
+  {Lx, Ly, Lz} = Dim;
   Data = Dict[op][[2]];
   disrange = Which[OptionValue["RangeType"] == "whole", ConstantArray[Dict[op][[1]], Length@Data], OptionValue["RangeType"] == "separated", MinMax[#] & /@ Data];
   (*Print[disrange];*)
@@ -455,37 +457,52 @@ PathPlot[min_, frame_, y0_, z0_, param_] := Module[{},
 ]
 
 CompareOP[pdata_, min_, frame_, Dim_, range_] := Module[{},
-  Print[Grid@Flatten[(Partition[#, 6] & /@ Table[Flatten[Plotop[pdata[[n]], #, "RangeType" -> range] & /@ {"X5", "P", "u"}], {n, frame}])\[Transpose], 1]];
+  Print[Grid@Flatten[(Partition[#, 6] & /@ Table[Flatten[Plotop[pdata[[n]], #, Dim, "RangeType" -> range] & /@ {"X5", "P", "u"}], {n, frame}])\[Transpose], 1]];
   Print[Grid@{Flatten[Table[{PlotPvector[Dispatch[min[[n]]], Dim], PlotSurface[pdata[[n]]]}, {n, frame}]\[Transpose]]}];
 ]
 
 MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True}]] := Module[{vars, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, n, t, x, y, z},
   {Lx, Ly, Lz} = Dim;
-  vars = Variables@GF;
-  init = SetInitial[vars, iconfig];
+  init = If[Length@iconfig==1, vars=Variables@GF;{vars, SetInitial[vars, iconfig]}\[Transpose], iconfig];
   XTable = Table[op, {op, {Subscript[aa, x, y, z], Subscript[AA, x, y, z], Subscript[bb, x, y, z], Subscript[BB, x, y, z], Subscript[CC, x, y, z], Subscript[cc, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
   PTable = Table[op, {op, {Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
   uTable = Table[op, {op, {Subscript[u, 1, x, y, z], Subscript[u, 2, x, y, z], Subscript[u, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
 
   Print["Minimizing without electric field."];
-  t = Timing[min = FindMinimum[GF, {vars, init}\[Transpose], MaxIterations -> Niter1];];
+  t = Timing[min = FindMinimum[GF, init, MaxIterations -> Niter1];];
   Print["Initializing minimization took " <> ToString[First@t] <> " seconds."];
-  init = #2 & @@@ (min[[2]]);
+  init = {#1, #2} & @@@ (min[[2]]);
   AppendTo[minlist, min[[2]]];
 
-  fEfields =  Table[Sum[MeshMask[Etype, {Lx, Ly, Lz}, x, y, z] MeshMask["square", {Lx, Ly, Lz}, x, y, z] 
+  If[Efields!={},
+     fEfields =  Table[Sum[MeshMask[Etype, {Lx, Ly, Lz}, x, y, z] MeshMask["square", {Lx, Ly, Lz}, x, y, z] 
                         efield.{Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}, {x, Lx}, {y, Ly}, {z, Lz}], {efield, Efields}];
-  Print["Applying electric field "];
-  Do[t = Timing[minEfield = FindMinimum[GF + fEfields[[n]], {vars, init}\[Transpose], MaxIterations -> Niter2];];
-     Print[ToString[n]<>": Electric time step took " <> ToString[First@t] <> " seconds."];
-     If[OptionValue["TimeSeries"], init = #2 & @@@ (minEfield[[2]]), Unevaluated[Sequence[]]];
-     AppendTo[minlist, minEfield[[2]]], 
-     {n, Length@fEfields}];
+     Print["Applying electric field "];
+     Do[t = Timing[minEfield = FindMinimum[GF + fEfields[[n]], init, MaxIterations -> Niter2];];
+        Print[ToString[n]<>": Electric time step took " <> ToString[First@t] <> " seconds."];
+        If[OptionValue["TimeSeries"], init = {#1, #2} & @@@ (minEfield[[2]]), Unevaluated[Sequence[]]];
+        AppendTo[minlist, minEfield[[2]]], 
+        {n, Length@fEfields}
+       ];
+     Unevaluated[Sequence[]]
+  ];
 
   PlotData = Table[Association[Thread[{"X5", "P", "u"} -> Table[{{-1, 1}*Max[Abs[upx /. Dispatch[min]]], Transpose[#[[;; , ;; , Lz]]] /. Dispatch[min] & /@ upx}, {upx, {XTable, PTable, uTable}}]]], {min, minlist}];
   EmitSound@Play[Sin[300 t Sin[20 t]], {t, 0, 3}];
   Return[{PlotData, minlist}]
 ]
+
+GetOpTables[minlist_, Dim_]:=Module[{Lx, Ly, Lz, XTable, PTable, uTable, PlotData, min, op, upx, x, y, z, msub},
+  {Lx, Ly, Lz} = Dim;
+  XTable = Table[op, {op, {Subscript[aa, x, y, z], Subscript[AA, x, y, z], Subscript[bb, x, y, z], Subscript[BB, x, y, z], Subscript[CC, x, y, z], Subscript[cc, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+  PTable = Table[op, {op, {Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+  uTable = Table[op, {op, {Subscript[u, 1, x, y, z], Subscript[u, 2, x, y, z], Subscript[u, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
+
+  PlotData = Table[msub=Flatten[{#[[1]]->#[[2]]}&/@min];Association[Thread[{"X5", "P", "u"} -> Table[{{-1, 1}*Max[Abs[upx /. Dispatch[msub]]], Transpose[#[[;; , ;; , Lz]]] /. Dispatch[msub] & /@ upx}, {upx, {XTable, PTable, uTable}}]]], {min, minlist}];
+  Return[PlotData]
+]
+
+
 
 (*-------------------------- Attributes ------------------------------*)
 
