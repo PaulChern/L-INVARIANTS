@@ -4,6 +4,7 @@
 - Invariant generator
 - Landau model builder, Generate Density Functional Theory (DFT) training sets by phonon frozen-in.
 - Finite Element Method (FEM), Minimization, and Finite Differences nonlinear solver on large scale continuous model
+- openmp parallelization
 - dynamics under external electric field
 - Nudged Elastic Bands (NEB) and Growing String Method (GSM) to explore the phase transition, dynamics, and domain wall structures
 - Mollwide projection
