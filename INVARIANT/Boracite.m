@@ -20,6 +20,8 @@ MinimizeBoracite   ::usage = "MinimizeBoracite[GF, iconfig, Niter1, Etype, Efiel
 PathPlot           ::usage = "PathPlot[min, frame, y0, z0, param]"
 CompareOP          ::usage = "CompareOP[pdata, min, frame, range]"
 GetOpTables        ::usage = "GetOpTables[minlist, Dim]"
+SimplifyBoracite   ::usage = "SimplifyBoracite[pos]"
+
 (*--------------------------------------------------*)
 (*-------------------------- Internal --------------*)
 (*--------------------------------------------------*)
@@ -369,7 +371,99 @@ SetInitial[vars_, iconfig_] := Module[{init, v, op, x, y, z},
                        op === AA && y - x > 0 && x < 0, -1,
                        op === AA && y - x > 0 && x > 0, 1, op === bb && y - x < 0, 1,
                        op === BB && y - x < 0 && y < 0, -1,
-                       op === BB && y - x < 0 && y > 0, 1, True, 0], {v, vars}]
+                       op === BB && y - x < 0 && y > 0, 1, True, 0], {v, vars}],
+    iconfig === "exp",
+    init = Table[{op = v[[1]], x = v[[2]], y = v[[3]], z = v[[4]]};
+                 Which[op === aa && y - x - 2/4 Ly > 0 && y - x - 3/4 Ly < 0, 1,
+                       op === aa && y - x > 0 && y - x - 1/4 Ly < 0, 1,
+                       op === aa && y - x + 2/4 Ly > 0 && y - x + 1/4 Ly < 0, 1,
+                       op === aa && y - x + 3/4 Ly < 0, 1,
+                       op === AA && y - x - 2/4 Ly > 0 && y - x - 3/4 Ly < 0 && x < 1/4 Lx, 1,
+                       op === AA && y - x - 2/4 Ly > 0 && y - x - 3/4 Ly < 0 && x > 1/4 Lx, -1,
+                       op === AA && y - x > 0 && y - x - 1/4 Ly < 0 && ((1/4 Lx < x < 2/4 Lx) || (x > 3/4 Lx)), 1,
+                       op === AA && y - x > 0 && y - x - 1/4 Ly < 0 && ((x < 1/4 Lx) || (2/4 Lx < x < 3/4 Lx)), -1,
+                       op === AA && y - x + 2/4 Ly > 0 && y - x + 1/4 Ly < 0 && 2/4 Lx < x < 3/4 Lx, 1,
+                       op === AA && y - x + 2/4 Ly > 0 && y - x + 1/4 Ly < 0 && ((x < 2/4 Lx) || (x > 3/4 Lx)), -1,
+                       op === AA && y - x + 3/4 Ly < 0, 1,
+                       op === bb && y - x - 3/4 Ly > 0, 1,
+                       op === bb && y - x - 1/4 Ly > 0 && y - x - 2/4 Ly < 0, 1,
+                       op === bb && y - x + 1/4 Ly > 0 && y - x < 0, 1,
+                       op === bb && y - x + 3/4 Ly > 0 && y - x + 2/4 Ly < 0, 1,
+                       op === BB && y - x - 3/4 Ly > 0, 1,
+                       op === BB && y - x - 1/4 Ly > 0 && y - x - 2/4 Ly < 0 && 2/4 Ly < y < 3/4 Ly, 1,
+                       op === BB && y - x - 1/4 Ly > 0 && y - x - 2/4 Ly < 0 &&((y > 3/4 Ly) || (y < 2/4 Ly)), -1,
+                       op === BB && y - x + 1/4 Ly > 0 && y - x < 0 && ((1/4 Ly < y < 2/4 Ly) || (y > 3/4 Ly)), 1,
+                       op === BB && y - x + 1/4 Ly > 0 && y - x < 0 && ((2/4 Ly < y < 3/4 Ly) || (y < 1/4 Ly)), -1,
+                       op === BB && y - x + 3/4 Ly > 0 && y - x + 2/4 Ly < 0 && y < 1/4 Ly, 1,
+                       op === BB && y - x + 3/4 Ly > 0 && y - x + 2/4 Ly < 0 && y > 1/4 Ly, -1, 
+                       op === P  && v[[2]] ==3, -1, True, 0], {v, vars}],
+    iconfig === "monopole",
+    init = Table[{op = v[[1]], x = v[[2]], y = v[[3]], z = v[[4]]};
+                 Which[op === aa && y - x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === AA && y - x - 1/2 Ly > 0 && y + x - Ly < 0, -1,
+                       op === bb && y - x - 1/2 Ly > 0 && y + x - Ly > 0, 1,
+                       op === BB && y - x - 1/2 Ly > 0 && y + x - Ly > 0, 1, 
+                       op === aa && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly < 0, 1,
+                       op === AA && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly < 0, 1,
+                       op === bb && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === BB && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, -1,
+                       op === aa && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === AA && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === bb && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 3/2 Ly > 0, 1,
+                       op === BB && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 3/2 Ly > 0, -1,
+                       op === bb && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly < 0, 1,
+                       op === BB && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly < 0, 1,
+                       op === aa && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === AA && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, -1,
+                       op === bb && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === BB && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === aa && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 3/2 Ly > 0, 1,
+                       op === AA && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 3/2 Ly > 0, -1,
+                       op === bb && y - x + 1/2 Ly < 0 && y + x - Ly < 0, 1,
+                       op === BB && y - x + 1/2 Ly < 0 && y + x - Ly < 0, -1,
+                       op === aa && y - x + 1/2 Ly < 0 && y + x - Ly > 0, 1,
+                       op === AA && y - x + 1/2 Ly < 0 && y + x - Ly > 0, 1, True, 0], {v, vars}],
+    iconfig === "toroidal",
+    init = Table[{op = v[[1]], x = v[[2]], y = v[[3]], z = v[[4]]};
+                 Which[op === bb && y - x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === BB && y - x - 1/2 Ly > 0 && y + x - Ly < 0, -1,
+                       op === aa && y - x - 1/2 Ly > 0 && y + x - Ly > 0, 1,
+                       op === AA && y - x - 1/2 Ly > 0 && y + x - Ly > 0, -1,
+                       op === bb && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly < 0, 1,
+                       op === BB && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly < 0, 1,
+                       op === aa && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === AA && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === bb && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === BB && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === aa && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 3/2 Ly > 0, 1,
+                       op === AA && y - x > 0 && y - x - 1/2 Ly < 0 && y + x - 3/2 Ly > 0, 1,
+                       op === aa && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly < 0, 1,
+                       op === AA && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly < 0, -1,
+                       op === bb && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, 1,
+                       op === BB && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 1/2 Ly > 0 && y + x - Ly < 0, -1,
+                       op === aa && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, 1,
+                       op === AA && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - Ly > 0 && y + x - 3/2 Ly < 0, -1,
+                       op === bb && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 3/2 Ly > 0, 1,
+                       op === BB && y - x < 0 && y - x + 1/2 Ly > 0 && y + x - 3/2 Ly > 0, -1,
+                       op === aa && y - x + 1/2 Ly < 0 && y + x - Ly < 0, 1,
+                       op === AA && y - x + 1/2 Ly < 0 && y + x - Ly < 0, 1,
+                       op === bb && y - x + 1/2 Ly < 0 && y + x - Ly > 0, 1,
+                       op === BB && y - x + 1/2 Ly < 0 && y + x - Ly > 0, 1, True, 0], {v, vars}],
+    iconfig === "wav",
+    init = Table[{op = v[[1]], x = v[[2]], y = v[[3]], z = v[[4]]};
+                 Which[op === aa, 1,
+                       op === AA && 1/3 Lx < x < 2/3 Lx, 1,
+                       op === AA && x < 1/3 Lx, -1,
+                       op === AA && x > 2/3 Lx, -1,
+                       True, 0], {v, vars}],
+    iconfig === "hill",
+    init = Table[{op = v[[1]], x = v[[2]], y = v[[3]], z = v[[4]]};
+                 Which[op === cc && (x < 1/4 Lx) || (x > 3/4 Lx), 1,
+                       op === CC && (x < 1/4 Lx) || (x > 3/4 Lx), 1,
+                       op === aa && 1/4 Lx < x < 3/4 Lx, 1,
+                       op === AA && 1/4 Lx < x < 2/4 Lx, -1,
+                       op === AA && 2/4 Lx < x < 3/4 Lx, 1,
+                       True, 0], {v, vars}]                       
     ];
    Return[init]
 ]
@@ -396,7 +490,7 @@ Plotop[Dict_, op_, Dim_, OptionsPattern[{"RangeType" -> "whole", "FrameNum" -> 1
    {iop, Length@Data}]
 ]
 
-PlotPvector[min_, Dim_, OptionsPattern[{"FrameNum" -> 1, "meshtype"->"square"}]] := Module[{lla, x, y, z},
+PlotPvector[min_, Dim_, density_, OptionsPattern[{"FrameNum" -> 1, "meshtype"->"square"}]] := Module[{lla, x, y, z},
   Show[Graphics3D[
                   Join[
                    Transpose[Table[lla = 1 MeshMask[OptionValue["meshtype"], Dim, x, y, z]; 
@@ -408,7 +502,7 @@ PlotPvector[min_, Dim_, OptionsPattern[{"FrameNum" -> 1, "meshtype"->"square"}]]
                                                {x, y, z} + lla {Subscript[P, 1, x, y, z], 
                                                Subscript[P, 2, x, y, z], 
                                                Subscript[P, 3, x, y, z]}}]]}, 
-                                   {x, 1, Lx, 1}, {y, 1, Ly, 1}, {z, 1, Lz}]] /. min, 
+                                   {x, 1, Lx, density}, {y, 1, Ly, density}, {z, 1, Lz}]] /. min, 
                    {Black, Thick, Dashed, Line[{{1, Ly, 1}, {Lx, 1, 1}}], Line[{{1, 1, 1}, {Lx, Ly, 1}}]}], 
                   ViewPoint -> {0, 0, 10}, 
                   ImageSize -> Large, 
@@ -424,64 +518,119 @@ PlotSurface[Data_] := Module[{},
        PlotRange -> Automatic,
        AspectRatio -> Automatic, 
        ImageSize -> Small,
-       ViewPoint -> {100, -100, 0}]]
+       ViewPoint -> {10, -10, 100}]]
 ]
 
-PathPlot[min_, frame_, y0_, z0_, param_] := Module[{},
-  Grid[{Table[ListPlot[Chop[{Table[Subscript[P, i, x, y0, z0], {x, 1, Lx}] /. Dispatch[min[[frame[[1]]]]], 
-                             Table[Subscript[P, i, x, y0, z0], {x, 1, Lx}] /. Dispatch[min[[frame[[2]]]]]}, 10^-6], 
+PathPlot[min_, Dim_, frame_, y0_, z0_, param_] := Module[{xx, i, Lx, Ly, Lz},
+  {Lx, Ly, Lz} = Dim;
+  Grid[{Table[ListPlot[Chop[(Table[Subscript[P, i, xx, y0, z0], {xx, 1, Lx}] /. Dispatch[min[[#]]])&/@frame, 10^-6], 
                        PlotRange -> All, 
                        ImageSize -> Medium, 
                        Joined -> True, 
                        InterpolationOrder -> 1, 
                        PlotMarkers -> Automatic, 
                        PlotLabel -> Subscript[P, i], 
-                       PlotLegends -> {ToString[frame[[1]]], ToString[frame[[2]]]}, 
+                       PlotLegends -> frame, 
                        Frame -> True], 
                 {i, Range[3]}], 
-        Table[ListPlot[Chop[
-            {Table[(Subscript[u, i, x + 1, y0, z0] - Subscript[u, i, x, y0, z0])/Subscript[\[CapitalDelta], 1] /. param, {x, 1, Lx}] /. Dispatch[min[[frame[[1]]]]], 
-             Table[(Subscript[u, i, x + 1, y0, z0] - Subscript[u, i, x, y0, z0])/Subscript[\[CapitalDelta], 1] /. param, {x, 1, Lx}] /. Dispatch[min[[frame[[2]]]]]}, 
-                            10^-4], 
+            {ListPlot[Chop[
+                (Table[(Subscript[u, 1, xx + 1, y0, z0] - Subscript[u, 1, xx, y0, z0])/\[CapitalDelta]1 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4], 
                        PlotRange -> All, 
                        ImageSize -> Medium, 
                        Joined -> True, 
                        InterpolationOrder -> 1, 
                        PlotMarkers -> Automatic, 
-                       PlotLabel -> Subscript[\[Epsilon], i, 1], 
-                       PlotLegends -> {ToString[frame[[1]]], ToString[frame[[2]]]}, 
-                       Frame -> True], 
-                {i, Range[3]}]
+                       PlotLabel -> Subscript[\[Epsilon], 1, 1], 
+                       PlotLegends -> frame, 
+                       Frame -> True],
+             ListPlot[Chop[
+                 (Table[(Subscript[u, 2, xx, y0 + 1, z0] - Subscript[u, 2, xx, y0, z0])/\[CapitalDelta]1 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4],
+                        PlotRange -> All, 
+                        ImageSize -> Medium,
+                        Joined -> True, 
+                        InterpolationOrder -> 1, 
+                        PlotMarkers -> Automatic, 
+                        PlotLabel -> Subscript[\[Epsilon], 2, 2],
+                        PlotLegends -> frame,
+                        Frame -> True],
+             ListPlot[Chop[
+                 (Table[(Subscript[u, 3, xx, y0, z0 + 1] - Subscript[u, 3, xx, y0, z0])/\[CapitalDelta]1 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4],
+                        PlotRange -> All,
+                        ImageSize -> Medium,
+                        Joined -> True,
+                        InterpolationOrder -> 1,
+                        PlotMarkers -> Automatic,
+                        PlotLabel -> Subscript[\[Epsilon], 3, 3],
+                        PlotLegends -> frame,
+                        Frame -> True]},
+            {ListPlot[Chop[
+                (Table[1/2 (Subscript[u, 2, xx, y0, z0 + 1] - Subscript[u, 2, xx, y0, z0])/\[CapitalDelta]3 
+                     + 1/2 (Subscript[u, 3, xx, y0 + 1, z0] - Subscript[u, 3, xx, y0, z0])/\[CapitalDelta]2 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4],
+                       PlotRange -> All, 
+                       ImageSize -> Medium,
+                       Joined -> True, 
+                       InterpolationOrder -> 1, 
+                       PlotMarkers -> Automatic, 
+                       PlotLabel -> Subscript[\[Epsilon], 2, 3],
+                       PlotLegends -> frame,
+                       Frame -> True],
+             ListPlot[Chop[
+                 (Table[1/2 (Subscript[u, 1, xx, y0, z0 + 1] - Subscript[u, 1, xx, y0, z0])/\[CapitalDelta]3
+                      + 1/2 (Subscript[u, 3, xx + 1, y0, z0] - Subscript[u, 3, xx, y0, z0])/\[CapitalDelta]1 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4],
+                        PlotRange -> All,
+                        ImageSize -> Medium,
+                        Joined -> True,
+                        InterpolationOrder -> 1,
+                        PlotMarkers -> Automatic,
+                        PlotLabel -> Subscript[\[Epsilon], 1, 3],
+                        PlotLegends -> frame,
+                        Frame -> True],
+             ListPlot[Chop[
+                 (Table[1/2 (Subscript[u, 1, xx, y0 + 1, z0] - Subscript[u, 1, xx, y0, z0])/\[CapitalDelta]2
+                      + 1/2 (Subscript[u, 2, xx + 1, y0, z0] - Subscript[u, 2, xx, y0, z0])/\[CapitalDelta]1 /. param, {xx, 1, Lx-1}] /. Dispatch[min[[#]]])&/@frame, 10^-4],
+                        PlotRange -> All,
+                        ImageSize -> Medium,
+                        Joined -> True,
+                        InterpolationOrder -> 1,
+                        PlotMarkers -> Automatic,
+                        PlotLabel -> Subscript[\[Epsilon], 1, 2],
+                        PlotLegends -> frame,
+                        Frame -> True]}
         }
     ]
 ]
 
-CompareOP[pdata_, min_, frame_, Dim_, range_] := Module[{},
+CompareOP[pdata_, min_, frame_, Dim_, range_, OptionsPattern[{"VectorDensity"->1}]] := Module[{},
   Print[Grid@Flatten[(Partition[#, 6] & /@ Table[Flatten[Plotop[pdata[[n]], #, Dim, "RangeType" -> range] & /@ {"X5", "P", "u"}], {n, frame}])\[Transpose], 1]];
-  Print[Grid@{Flatten[Table[{PlotPvector[Dispatch[min[[n]]], Dim], PlotSurface[pdata[[n]]]}, {n, frame}]\[Transpose]]}];
+  Print[Grid@{Flatten[Table[{PlotPvector[Dispatch[min[[n]]], Dim, OptionValue["VectorDensity"]], PlotSurface[pdata[[n]]]}, {n, frame}]\[Transpose]]}];
 ]
 
-MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True}]] := Module[{vars, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, n, t, x, y, z},
+MinimizeBoracite[iconfig_, Dim_, GF_, Niter1_, Etype_, Efields_, Niter2_, OptionsPattern[{"TimeSeries"->True, "dir"->""}]] := Module[{vars, fEfields, efield, init, minlist = {}, min, minEfield, XTable, PTable, uTable, PlotData, op, upx, n, t, x, y, z, BoundarySub},
   {Lx, Ly, Lz} = Dim;
-  init = If[Length@iconfig==1, vars=Variables@GF;{vars, SetInitial[vars, iconfig]}\[Transpose], iconfig];
+  init = If[Length@iconfig==0, vars=Variables@GF;{vars, SetInitial[vars, iconfig]}\[Transpose], iconfig];
   XTable = Table[op, {op, {Subscript[aa, x, y, z], Subscript[AA, x, y, z], Subscript[bb, x, y, z], Subscript[BB, x, y, z], Subscript[CC, x, y, z], Subscript[cc, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
   PTable = Table[op, {op, {Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
   uTable = Table[op, {op, {Subscript[u, 1, x, y, z], Subscript[u, 2, x, y, z], Subscript[u, 3, x, y, z]}}, {x, Lx}, {y, Ly}, {z, Lz}];
 
   Print["Minimizing without electric field."];
   t = Timing[min = FindMinimum[GF, init, MaxIterations -> Niter1];];
+  BoundarySub = If[#1[[1]] === u && MemberQ[Mod @@@ ({{#1[[2]], #1[[3]]}, {Lx, Ly}}\[Transpose]), 1], #1 -> #2, Unevaluated[Sequence[]]] & @@@ min[[2]];
   Print["Initializing minimization took " <> ToString[First@t] <> " seconds."];
   init = {#1, #2} & @@@ (min[[2]]);
   AppendTo[minlist, min[[2]]];
+  If[OptionValue["dir"]!="", Export[OptionValue["dir"]<>"/"<>OptionValue["dir"]<>".1"<>".txt",{#1,#2}&@@@min[[2]],"Table"], Unevaluated[Sequence[]]];
 
   If[Efields!={},
      fEfields =  Table[Sum[MeshMask[Etype, {Lx, Ly, Lz}, x, y, z] MeshMask["square", {Lx, Ly, Lz}, x, y, z] 
                         efield.{Subscript[P, 1, x, y, z], Subscript[P, 2, x, y, z], Subscript[P, 3, x, y, z]}, {x, Lx}, {y, Ly}, {z, Lz}], {efield, Efields}];
      Print["Applying electric field "];
-     Do[t = Timing[minEfield = FindMinimum[GF + fEfields[[n]], init, MaxIterations -> Niter2];];
+     Do[t = Timing[minEfield = FindMinimum[GF + fEfields[[n]]/.BoundarySub, init, MaxIterations -> Niter2];];
         Print[ToString[n]<>": Electric time step took " <> ToString[First@t] <> " seconds."];
         If[OptionValue["TimeSeries"], init = {#1, #2} & @@@ (minEfield[[2]]), Unevaluated[Sequence[]]];
-        AppendTo[minlist, minEfield[[2]]], 
+        AppendTo[minlist, minEfield[[2]]];
+        If[OptionValue["dir"]!="", 
+           Export[OptionValue["dir"]<>"/"<>OptionValue["dir"]<>"."<>ToString[n+1]<>".txt",{#1,#2}&@@@minEfield[[2]],"Table"], 
+           Unevaluated[Sequence[]]], 
         {n, Length@fEfields}
        ];
      Unevaluated[Sequence[]]
@@ -502,6 +651,15 @@ GetOpTables[minlist_, Dim_]:=Module[{Lx, Ly, Lz, XTable, PTable, uTable, PlotDat
   Return[PlotData]
 ]
 
+SimplifyBoracite[pos_] := Module[{SimplifyPos},
+  SimplifyPos = If[StringCases[#2, RegularExpression["Cu|Cl"]] != {}, {#1, #2}, ## &[]] & @@@ pos;
+  Return[SimplifyPos]
+]
+
+SimplifyElementSymbol[ele_] := Module[{SimplifyList},
+  SimplifyList = First@StringCases[#, RegularExpression["[[:upper:]][[:lower:]]*"]] & /@ ele;
+  Return[SimplifyList]
+]
 
 
 (*-------------------------- Attributes ------------------------------*)
