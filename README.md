@@ -1,4 +1,4 @@
-# INVARIANT
+# L-INVARIANT
 ### Phase field / Landau model builder:
 - Displacements modes analysis
 - Modulate modes in supercell, generate initial Domain walls (DWs) structures for Density Functional Theory (DFT) codes
