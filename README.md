@@ -11,6 +11,7 @@
 - Mollwide projection
 - Examples: Boracite (To be added: Perovskite, Spinel, Rutile, Pyrochlore)
 ### Todo:
+- interface with GTpack (http://gtpack.org/)
 - including magnetism symmetry analysis
 - adding Atomistic Green's Function (AGF) method to study scattering and ultrafast non-equilibrium dynamics
 - including electron phonon coupling (EPC) by fitting phonon dependent Tight-Binding (TB) model from DFT molecular dynamics (MD).
