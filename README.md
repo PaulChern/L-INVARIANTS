@@ -1,7 +1,7 @@
 # L-INVARIANTS
 ### Phase field / Landau model builder:
 - Displacements modes analysis
-- Invariant generator
+- INVARIANT generator
 - Modulate modes in supercell, generate initial Domain walls (DWs) structures for Density Functional Theory (DFT) codes
 - Landau model builder, Generate DFT training sets by phonon frozen-in.
 - Finite Element Method (FEM), Minimization, and Finite Differences nonlinear solver on large scale continuous model
