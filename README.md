@@ -11,6 +11,7 @@
 - Mollwide projection
 - Examples: Boracite (To be added: Perovskite, Spinel, Rutile, Pyrochlore)
 ### Todo:
+- include MC and MD solver
 - interface with GTpack (http://gtpack.org/)
 - Mathematica2Fortran module
 - including magnetism symmetry analysis
