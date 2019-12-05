@@ -12,6 +12,7 @@
 - Examples: Boracite (To be added: Perovskite, Spinel, Rutile, Pyrochlore)
 ### Todo:
 - interface with GTpack (http://gtpack.org/)
+- implement k dot p model builder
 - Mathematica2Fortran module
 - including magnetism symmetry analysis
 - adding Atomistic Green's Function (AGF) method to study scattering and ultrafast non-equilibrium dynamics
