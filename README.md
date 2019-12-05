@@ -4,14 +4,13 @@
 - INVARIANT generator
 - Modulate modes in supercell, generate initial Domain walls (DWs) structures for Density Functional Theory (DFT) codes
 - Landau model builder, Generate DFT training sets by phonon frozen-in.
-- Finite Element Method (FEM), Minimization, and Finite Differences nonlinear solver on large scale continuous model
+- Finite Element Method (FEM), Minimization, molecular dynamics (MD), monte Carlo (MC), and Finite Differences nonlinear solver on large scale continuous model
 - openmp parallelization
 - dynamics under external electric field
 - Nudged Elastic Bands (NEB) and Growing String Method (GSM) to explore the phase transition, dynamics, and domain wall structures
 - Mollwide projection
 - Examples: Boracite (To be added: Perovskite, Spinel, Rutile, Pyrochlore)
 ### Todo:
-- include MC and MD solver
 - interface with GTpack (http://gtpack.org/)
 - Mathematica2Fortran module
 - including magnetism symmetry analysis
