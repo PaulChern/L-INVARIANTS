@@ -7,11 +7,17 @@ ImposeIsoMode                ::usage = "ImposeIsoMode[Wyckoff0, IsoMatrix, modes
 GetIRvector                  ::usage = "GetIRvector[id, pos]"
 GetOpMatrix                  ::usage = "GetOpMatrix[SymOpFile, pos, IsoMatrix, Modes]"
 GetIsoVars                   ::usage = "GetIsoVars[IsoDispModes]"
-GetIsoTransformRules         ::usage = "GetIsoTransformRules[OpMatrix, IsoDispModes]"
-GetInvariants                ::usage = "GetInvariants[seeds, order, AllModes, OpMatrix]"
+GetIsoTransformRules         ::usage = "GetIsoDispTransformRules[OpMatrix, IsoDispModes, TranType]"
+GetIsoStrainTransformRules   ::usage = "GetIsoStrainTransformRules[GridSymFile]"
+Epsilon2Field                ::usage = "Epsilon2Field[strain]"
+Field2Epsilon                ::usage = "Field2Epsilon[field]"
+GetEpsilonijRule             ::usage = "GetEpsilonijRule[symfile]"
+GetInvariants                ::usage = "GetInvariants[seeds, order, AllModes, OpMatrix, GridSymFile]"
 ImposeDW                     ::usage = "ImposeDW[Wyckoff0, IsoMatrix, modeset, {Nx, Ny, Nz}]"
 ImposeIsoStrainVariedDspMode ::usage = "ImposeIsoStrainVariedDspMode[Wyckoff0, IsoMatrix, modeset, LV]"
 SimplifyElementSymbol        ::usage = "SimplifyElementSymbol[ele]"
+ShowInvariantTable           ::usage = "ShowInvariantTable[TableData]"
+Jij                          ::usage = "Jij[r0, MeshDim]"
 
 (*--------- Plot and Manipulate Crystal Structures -------------------- ----------------*)
 
@@ -19,8 +25,9 @@ SimplifyElementSymbol        ::usage = "SimplifyElementSymbol[ele]"
 
 (*--------------------------------------------------*)
 (*-------------------------- Internal --------------*)
+mIso
 Iso
-
+Epsilon
 (*--------------------------------------------------*)
 
 (*--------------------------- Options ----------------------------*)
@@ -59,10 +66,31 @@ ISODISTORT[R0_, pos0_, pos_, IsoMatrix_, label_] := Module[{imode, Amp, NN},
 ImposeIsoMode[Wyckoff0_, IsoMatrix_, modeset_, s_] := Module[{mode, id, Amp, pos},
   pos = Wyckoff0;
   Do[id = mode[[1]]; Amp = s mode[[3]] mode[[4]];
-     pos = Transpose[{#[[1]] & /@ pos + Amp If[IntegerQ[id] , # & /@ Partition[IsoMatrix[[;; , id]] // Normal, 3], Print["mode not exist!"]], 
-                      First@StringCases[#,RegularExpression["[[:upper:]][[:lower:]]*"]] & /@ Transpose[pos][[2]]}], 
-     {mode, modeset}];
+     pos = Transpose[{#[[1]] & /@ pos + Amp If[IntegerQ[id], # & /@ Partition[IsoMatrix[[;; , id]] // Normal, 3], Print["mode not exist!"]], First@StringCases[#,RegularExpression["[[:upper:]][[:lower:]]*"]] & /@ Transpose[pos][[2]]}], {mode, modeset}];
   Return[pos]
+]
+
+Jij[symfile_] := Module[{tij, i}, 
+  tij = DeleteDuplicates[DeleteCases[Flatten[Table[Total[Sum[Normalize[#[[1]][[2]]][[i]] Subscript[Iso, i, 0, 0, 0], {i, 3}]*Sum[Normalize[#[[2]][[2]]][[i]] Subscript[Iso, i, #[[2]][[1]][[1]], #[[2]][[1]][[2]], #[[2]][[1]][[3]]], {i, 3}] & /@ SiteJij[symfile, {{{0, 0, 0}, {0, 0, 1}}, {neighbor, vec}}]], {neighbor, Flatten[GetUpTo3rdNeighbors[], 1]}, {vec, IdentityMatrix[3]}]], 0, 2], #1 === -#2 || #1 === #2 &];
+  Return[Table[tij[[i]]/Total[DeleteDuplicates[Abs[Flatten[CoefficientList[tij[[i]], Variables[tij[[i]]]]]]]] // Expand, {i, Length@tij}]]]
+
+Epsilon2Field[strain_] := Module[{}, 
+  {{{0, 0, 0}, IdentityMatrix[3][[strain[[2]]]]}, {IdentityMatrix[3][[strain[[3]]]], IdentityMatrix[3][[strain[[2]]]]}, {{0, 0, 0}, IdentityMatrix[3][[strain[[3]]]]}, {IdentityMatrix[3][[strain[[2]]]], IdentityMatrix[3][[strain[[3]]]]}}]
+
+Field2Epsilon[field_] := Module[{}, 
+  1/2 (Sum[Normalize[field[[2]][[1]]][[j]] Normalize[field[[1]][[2]]][[i]] Subscript[Epsilon, i, j], {j, 3}, {i, 3}] + Sum[Normalize[field[[4]][[1]]][[j]] Normalize[field[[3]][[2]]][[i]] Subscript[Epsilon, i, j], {j, 3}, {i, 3}])/.{Subscript[Epsilon, 2, 1] -> Subscript[Epsilon, 1, 2], Subscript[Epsilon, 3, 1] -> Subscript[Epsilon, 1, 3], Subscript[Epsilon, 3, 2] -> Subscript[Epsilon, 2, 3]}]
+
+(*Epsilon2Field[strain_] := Module[{},
+  {{{0, 0, 0}, IdentityMatrix[3][[strain[[2]]]]}, {IdentityMatrix[3][[strain[[3]]]], IdentityMatrix[3][[strain[[2]]]]}}
+]
+
+Field2Epsilon[field_] := Module[{},
+  Sum[Normalize[field[[2]][[1]]][[j]] Normalize[field[[1]][[2]]][[i]] Subscript[Epsilon, i, j], {j, 3}, {i, 3}] /. {Subscript[Epsilon, 2, 1] -> Subscript[Epsilon, 1, 2], Subscript[Epsilon, 3, 1] -> Subscript[Epsilon, 1, 3], Subscript[Epsilon, 3, 2] -> Subscript[Epsilon, 2, 3]}
+]*)
+
+GetEpsilonijRule[symfile_] := Module[{tij, i},
+  strains = DeleteDuplicates@Flatten[SparseArray[{{i_, j_} /; i == j -> Subscript[Epsilon, i, j], {i_, j_} /; i < j -> Subscript[Epsilon, i, j], {i_, j_} /; i > j -> Subscript[Epsilon, j, i]}, {3, 3}] // Normal];
+  Thread[strains -> #] & /@ (Table[Field2Epsilon[#] & /@ SiteJij[symfile, Epsilon2Field[ep]], {ep, strains}]\[Transpose])
 ]
 
 GetIsoVars[IsoDispModes_] := Module[{VarString, Var},
@@ -76,29 +104,52 @@ GetIRvector[id_, IsoMatrix_, pos_] := Module[{IRvector},
   Return[IRvector]
 ]
 
-GetOpMatrix[SymOpFile_, pos_, IsoMatrix_, Modes_] := Module[{op2, ir1, ir2, proj, mat, OpMatrix, AllIRvectors, AllTransformedIRvectors, IsoDim, t},
+GetOpMatrix[SymOpFile_, pos_, IsoMatrix_, Modes_, OptionsPattern["spin" -> False]] := Module[{op2, ir1, ir2, proj, mat, OpMatrix, AllIRvectors, AllTransformedIRvectors, IsoDim, t, CifData, CifFlags, xyzName, xyzStrData},
+  CifData = Import[SymOpFile, "string"] <> "\n";
+  originshift = ToExpression[StringReplace[StringCases[CifData,RegularExpression["origin=\\W\\d\\.*\\d*,\\d\\.*\\d*,\\d\\.*\\d*\\W"]][[1]], {"origin=" -> "", "(" -> "{", ")" -> "}"}]];
+  (*---fix for some strange behaviour---*)
+  CifData = StringReplace[CifData, Thread[DeleteDuplicates[StringCases[CifData, RegularExpression[";"]]] -> ","]];
+  CifData = StringReplace[CifData, Thread[DeleteDuplicates[StringCases[CifData, RegularExpression["[[:upper:]].{3,6}(\[)\\d,\\d,\\d(\])"]]] ->""]];
+  CifData = ImportString[CifData, "CIF"];
+  CifFlags = Table[Level[CifData[[i]], 1][[1]], {i, Length[CifData]}];
+ 
+  xyzName = Part[CifFlags, Flatten[Position[StringCount[CifFlags, "xyz"], 1]]];
+  xyzStrData = Flatten[xyzName /. CifData];
+
   IsoDim = Length@Modes;
+  OpMatrix = If[IsoDim != 0,
   AllIRvectors = Flatten[GetIRvector[#1, IsoMatrix, pos]\[Transpose][[1]]] & @@@ Modes;
-  AllTransformedIRvectors = Transpose[ParallelTable[SymmetryOpVectorField[SymOpFile, pos, GetIRvector[id, IsoMatrix, pos]], {id, IsoDim}, DistributedContexts -> {"INVARIANT`ISODISTORT`Private`"}]];
+  AllTransformedIRvectors = Transpose[ParallelTable[SymmetryOpVectorField[SymOpFile, pos, GetIRvector[id, IsoMatrix, pos], "spin" -> OptionValue["spin"]], {id, IsoDim}, DistributedContexts -> {"INVARIANT`ISODISTORT`Private`"}]];
   (*AllTransformedIRvectors = Transpose[Table[SymmetryOpVectorField[SymOpFile, pos, GetIRvector[id, IsoMatrix, pos]], {id, IsoDim}]];*)
-  OpMatrix = ParallelTable[mat=Table[Flatten[op2[[ir1]]\[Transpose][[1]]].AllIRvectors[[ir2]], {ir1, Range@IsoDim}, {ir2, Range@IsoDim}];
-  SparseArray[Normalize[#] & /@ mat], {op2, AllTransformedIRvectors}, DistributedContexts -> {"INVARIANT`ISODISTORT`Private`"}];
+  ParallelTable[mat=Table[Flatten[op2[[ir1]]\[Transpose][[1]]].AllIRvectors[[ir2]], {ir1, Range@IsoDim}, {ir2, Range@IsoDim}]; SparseArray[Normalize[#] & /@ mat], {op2, AllTransformedIRvectors}, DistributedContexts -> {"INVARIANT`ISODISTORT`Private`"}],
+  Table[{}, {Length@xyzStrData}]
+  ];
   Return[OpMatrix]
 ]
 
-GetIsoTransformRules[OpMatrix_, IsoDispModes_] := Module[{IsoDim, IsoVars, rules, i, var},
-  IsoDim = Length@IsoDispModes;
-  IsoVars = Subscript[Iso, ToExpression[#1]] &@@@ IsoDispModes;
-  rules = IsoVars[[#1[[1]]]] -> #2 IsoVars[[#1[[2]]]] & @@@ Drop[ArrayRules[OpMatrix], -1];
-  rules = Table[First@DeleteDuplicates[Keys[rules[[#]]] & /@ i] -> Total[Values[rules[[#]]] & /@ i], {i, Table[Flatten[Position[Keys@rules, var]], {var, Subscript[Iso, #] & /@ Range[IsoDim]}]}];
+GetIsoTransformRules[OpMatrix_, IsoModes_, TranType_] := Module[{IsoDim, IsoVars, SpinDispRules, rules, i, var},
+  IsoDim = Length@IsoModes;
+  rules = If[IsoDim != 0,
+  IsoVars = Which[TranType == "disp", Subscript[Iso, ToExpression[#1]] &@@@ IsoModes, TranType == "spin", Subscript[mIso, ToExpression[#1]] &@@@ IsoModes];
+  SpinDispRules = IsoVars[[#1[[1]]]] -> #2 IsoVars[[#1[[2]]]] & @@@ Drop[ArrayRules[OpMatrix], -1];
+  Table[First@DeleteDuplicates[Keys[SpinDispRules[[#]]] & /@ i] -> Total[Values[SpinDispRules[[#]]] & /@ i], {i, Table[Flatten[Position[Keys@SpinDispRules, var]], {var, Which[TranType == "disp", Subscript[Iso, #] & /@ Range[IsoDim], TranType == "spin", Subscript[mIso, #] & /@ Range[IsoDim]]}]}], {}];
   Return[rules]
 ]
 
-GetInvariants[seeds_, order_, AllModes_, OpMatrix_, OptionsPattern[{"ctol" -> 10^-6}]] := Module[{monomials, invariant, i},
+GetIsoStrainTransformRules[GridSymFile_] := Module[{StrainRules},
+  StrainRules = GetEpsilonijRule[GridSymFile];
+  Return[StrainRules]
+]
+
+GetInvariants[seeds_, order_, DispModes_, OpDispMatrix_, SpinModes_, OpSpinMatrix_, GridSymFile_, OptionsPattern[{"strain"->False, "counting"->False}]] := Module[{monomials, invariant, TransformRules, i, ss, strains},
+  strains = DeleteDuplicates@Flatten[SparseArray[{{i_, j_} /; i == j -> Subscript[Epsilon, i, j], {i_, j_} /; i < j -> Subscript[Epsilon, i, j], {i_, j_} /; i > j -> Subscript[Epsilon, j, i]}, {3, 3}] // Normal];
   CoeffNorm = Thread[seeds -> ConstantArray[1, Length@seeds]];
   monomials = MonomialList[Total[seeds]^order];
-  invariant = DeleteDuplicates[DeleteCases[Union[Total[(monomials /. GetIsoTransformRules[#, AllModes]) & /@ OpMatrix]], 0.], (#1 -#2 == 0 || #1 + #2 == 0) &];
-  Return[Table[Simplify[Rationalize[invariant[[i]]/Total[Abs[Flatten[CoefficientList[invariant[[i]], Variables[invariant[[i]]]]]]], OptionValue["ctol"]]], {i, Length@invariant}]]
+  monomials = If[OptionValue["strain"], Flatten[Table[# ss & /@ monomials, {ss, strains}]], monomials];
+  TransformRules = Join[#1, #2, #3] &@@@ ({GetIsoTransformRules[#, DispModes, "disp"] & /@ OpDispMatrix, GetIsoTransformRules[#, SpinModes, "spin"] & /@ OpSpinMatrix, GetIsoStrainTransformRules[GridSymFile]}\[Transpose]);
+
+  invariant = DeleteDuplicates[DeleteCases[Union[Total[(monomials /. # & /@ TransformRules)]], i_/;i==0], (#1 -#2 == 0 || #1 + #2 == 0) &];
+  Return[Table[Rationalize[Simplify[invariant[[i]]/If[OptionValue["counting"], Total[Abs[Flatten[CoefficientList[invariant[[i]], Variables[invariant[[i]]]]]]], Total[DeleteDuplicates[Abs[Flatten[CoefficientList[invariant[[i]], Variables[invariant[[i]]]]]]]]]]], {i, Length@invariant}]]
 ]
 
 ImposeDW[Wyckoff0_, IsoMatrix_, modeset_, {Nx_, Ny_, Nz_}] := Module[{mode, id, Amp, pos, s, ix, iy, iz, Superpos},
@@ -128,6 +179,10 @@ SimplifyElementSymbol[ele_] := Module[{SimplifyList},
   SimplifyList = First@StringCases[#, RegularExpression["[[:upper:]][[:lower:]]*"]] & /@ ele;
   Return[SimplifyList]
 ]
+
+ShowInvariantTable[TableData_, param_, OptionsPattern["FontSize" -> 12]] := Module[{m, n},
+  Print[Rotate[Grid[Table[Style[Rotate[# // Expand, -270 Degree], Black, Bold, OptionValue["FontSize"]] & /@ (Flatten[Table[{Flatten[{"param", param[[n]]}], Prepend[TableData[[n]], n]}, {n, Length@TableData}], 1][[m]]), {m, 2 Length@TableData}], Alignment -> Left, Frame -> All], 270 Degree]]]
+
 (*-------------------------- Attributes ------------------------------*)
 
 (*Attributes[]={Protected, ReadProtected}*)

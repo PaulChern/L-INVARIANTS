@@ -18,6 +18,8 @@ BeginPackage["INVARIANT`",
 	         "INVARIANT`Structure`",
 	         "INVARIANT`Boracite`",
 	         "INVARIANT`Neb`",
+	         "INVARIANT`Mc`",
+	         "INVARIANT`Fortran`",
 	         "INVARIANT`Phonopy`",
 	         "INVARIANT`Mollweide`",
              "INVARIANT`Builder`"}]
