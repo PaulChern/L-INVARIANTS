@@ -10,6 +10,10 @@
 - Generate Fortran source code from mathematica
 - openmp parallelization
 - dynamics under external electric field
+- Jij of Heisenberge model from DFT, in Liechtenstein manner
+- Unfolding
+- phonon/magnon calulation from DFT input
+- X ray diffraction simulation
 - Nudged Elastic Bands (NEB) and Growing String Method (GSM) to explore the phase transition, dynamics, and domain wall structures
 - Mollwide projection
 - Examples: Boracite, Perovskite (To be added: Spinel, Rutile, Pyrochlore)
