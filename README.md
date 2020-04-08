@@ -1,5 +1,5 @@
 # L-INVARIANTS
-### Phase field / Landau model builder:
+### Universal model builder (Lattice, Electron, Spin):
 - Displacement and magnetic modes analysis
 - INVARIANT generator (couplings among distortion, strain and magnetic)
 - Modulate modes in supercell, generate initial Domain walls (DWs) structures for Density Functional Theory (DFT) codes
